@@ -14,28 +14,33 @@ import {
   Check,
   Image as ImageIcon,
   File,
-  MessageSquare
+  MessageSquare,
+  Loader2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { mockLeads, mockMessages, mockTags, getMessagesForLead } from "../services/mockData";
-import { Message as MessageType, Lead, Tag } from "../types";
+import { mockLeads } from "../services/mockData";
+import { Message as MessageType, Lead } from "../types";
 import { format } from "date-fns";
+import WhatsappConnection from "@/components/whatsapp/WhatsappConnection";
+import { useWhatsappChat } from "@/hooks/use-whatsapp-chat";
+import { Toaster } from "@/components/ui/toaster";
 
 const ChatPage: React.FC = () => {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [messages, setMessages] = useState<MessageType[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [messageInput, setMessageInput] = useState("");
+  const [isWhatsappConnected, setIsWhatsappConnected] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  useEffect(() => {
-    // Load messages when a lead is selected
-    if (selectedLead) {
-      const leadMessages = getMessagesForLead(selectedLead.id);
-      setMessages(leadMessages);
-    }
-  }, [selectedLead]);
+  // Use our custom hook to manage chat messages
+  const {
+    messages,
+    loading: messagesLoading,
+    error: messagesError,
+    sendMessage,
+    refreshMessages
+  } = useWhatsappChat(selectedLead);
   
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -47,35 +52,25 @@ const ChatPage: React.FC = () => {
     lead.phone.includes(searchTerm)
   );
   
-  const getTagBadge = (tag: Tag) => (
-    <span 
-      key={tag.id} 
-      className="tag"
-      style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
-    >
-      {tag.name}
-    </span>
-  );
-  
   const formatTime = (timestamp: string) => {
     return format(new Date(timestamp), "HH:mm");
   };
   
-  const sendMessage = () => {
-    if (!messageInput.trim() || !selectedLead) return;
+  const handleSendMessage = async () => {
+    if (!messageInput.trim() || !selectedLead || !isWhatsappConnected) return;
     
-    const newMessage: MessageType = {
-      id: `msg-${Date.now()}`,
-      leadId: selectedLead.id,
-      content: messageInput,
-      type: "text",
-      isIncoming: false,
-      timestamp: new Date().toISOString(),
-      status: "sent"
-    };
-    
-    setMessages([...messages, newMessage]);
+    // Use our service to send the message
+    await sendMessage(messageInput);
     setMessageInput("");
+  };
+
+  const handleConnectionStateChange = (isConnected: boolean) => {
+    setIsWhatsappConnected(isConnected);
+    
+    // Refresh messages when connection state changes
+    if (isConnected && selectedLead) {
+      refreshMessages();
+    }
   };
   
   return (
@@ -93,6 +88,10 @@ const ChatPage: React.FC = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+          </div>
+          
+          <div className="p-3 border-b border-gray-200">
+            <WhatsappConnection onConnectionStateChange={handleConnectionStateChange} />
           </div>
           
           <div className="flex-1 overflow-y-auto">
@@ -136,13 +135,9 @@ const ChatPage: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-medium">{selectedLead.name}</h3>
-                  <div className="flex flex-wrap">
-                    {selectedLead.tags.slice(0, 2).map(getTagBadge)}
-                    {selectedLead.tags.length > 2 && (
-                      <span className="tag bg-gray-100 text-gray-600">
-                        +{selectedLead.tags.length - 2}
-                      </span>
-                    )}
+                  <div className="flex items-center">
+                    <span className="text-xs text-gray-500">{selectedLead.phone}</span>
+                    <span className={`ml-2 w-2 h-2 rounded-full ${isWhatsappConnected ? 'bg-green-500' : 'bg-gray-300'}`}></span>
                   </div>
                 </div>
               </div>
@@ -165,27 +160,41 @@ const ChatPage: React.FC = () => {
             
             {/* Chat messages */}
             <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-              <div className="flex flex-col space-y-2">
-                {messages.map(message => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.isIncoming ? "" : "justify-end"}`}
-                  >
+              {messagesLoading ? (
+                <div className="flex justify-center items-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-crm-primary" />
+                </div>
+              ) : messagesError ? (
+                <div className="flex justify-center items-center h-full text-red-500">
+                  Erro ao carregar mensagens
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="flex justify-center items-center h-full text-gray-400">
+                  Nenhuma mensagem encontrada
+                </div>
+              ) : (
+                <div className="flex flex-col space-y-2">
+                  {messages.map(message => (
                     <div
-                      className={message.isIncoming ? "chat-bubble-incoming" : "chat-bubble-outgoing"}
+                      key={message.id}
+                      className={`flex ${message.isIncoming ? "" : "justify-end"}`}
                     >
-                      {message.content}
-                      <div className={`text-xs ${message.isIncoming ? "text-gray-500" : "text-gray-600"} mt-1 flex justify-end items-center`}>
-                        {formatTime(message.timestamp)}
-                        {!message.isIncoming && (
-                          <Check className="h-3 w-3 ml-1 text-crm-primary" />
-                        )}
+                      <div
+                        className={message.isIncoming ? "chat-bubble-incoming" : "chat-bubble-outgoing"}
+                      >
+                        {message.content}
+                        <div className={`text-xs ${message.isIncoming ? "text-gray-500" : "text-gray-600"} mt-1 flex justify-end items-center`}>
+                          {formatTime(message.timestamp)}
+                          {!message.isIncoming && (
+                            <Check className="h-3 w-3 ml-1 text-crm-primary" />
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
             </div>
             
             {/* Chat input */}
@@ -198,31 +207,43 @@ const ChatPage: React.FC = () => {
                   <PaperclipIcon className="h-5 w-5 text-gray-500" />
                 </Button>
                 <Input
-                  placeholder="Digite uma mensagem..."
+                  placeholder={isWhatsappConnected ? "Digite uma mensagem..." : "Conecte-se ao WhatsApp para enviar mensagens"}
                   className="flex-1"
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
+                  disabled={!isWhatsappConnected}
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
-                      sendMessage();
+                      handleSendMessage();
                     }
                   }}
                 />
-                {messageInput.trim() ? (
+                {messageInput.trim() && isWhatsappConnected ? (
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     className="rounded-full h-9 w-9 p-0 bg-crm-primary text-white"
-                    onClick={sendMessage}
+                    onClick={handleSendMessage}
+                    disabled={!isWhatsappConnected}
                   >
                     <Send className="h-5 w-5" />
                   </Button>
                 ) : (
-                  <Button variant="ghost" size="sm" className="rounded-full h-9 w-9 p-0">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="rounded-full h-9 w-9 p-0"
+                    disabled={!isWhatsappConnected}
+                  >
                     <Mic className="h-5 w-5 text-gray-500" />
                   </Button>
                 )}
               </div>
+              {!isWhatsappConnected && (
+                <div className="mt-2 text-center text-sm text-red-500">
+                  Conecte-se ao WhatsApp para enviar mensagens
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -237,6 +258,7 @@ const ChatPage: React.FC = () => {
           </div>
         )}
       </div>
+      <Toaster />
     </Layout>
   );
 };
