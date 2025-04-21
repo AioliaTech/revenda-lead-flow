@@ -1,3 +1,6 @@
+import { DateRange as DayPickerDateRange } from "react-day-picker";
+
+export type DateRange = DayPickerDateRange;
 
 export interface Lead {
   id: string;

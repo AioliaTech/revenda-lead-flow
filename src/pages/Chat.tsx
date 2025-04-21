@@ -14,6 +14,7 @@ import {
   Check,
   Image as ImageIcon,
   File,
+  MessageSquare
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { mockLeads, mockMessages, mockTags, getMessagesForLead } from "../services/mockData";

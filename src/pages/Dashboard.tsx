@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import Layout from "../components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -27,6 +26,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { mockKanbanColumns } from "../services/mockData";
 import { cn } from "@/lib/utils";
 import { DashboardFilter } from "@/types";
+import { DateRange } from "react-day-picker";
 
 const Dashboard: React.FC = () => {
   const [filter, setFilter] = useState<DashboardFilter>({
@@ -34,28 +34,22 @@ const Dashboard: React.FC = () => {
     channelIds: ["all"],
   });
   
-  const [dateRange, setDateRange] = useState<{
-    from: Date | undefined;
-    to: Date | undefined;
-  }>({
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: undefined,
     to: undefined,
   });
   
-  // Mock data for charts and stats
   const stats = {
     newLeads: 18,
     inProgressLeads: 32,
     completedLeads: 7,
   };
   
-  // Transform kanban columns data for the funnel chart
   const funnelData = mockKanbanColumns.map((column) => ({
     name: column.title,
     value: column.leadIds.length,
   }));
 
-  // Calculate percentage changes
   const percentageChanges = {
     newLeads: 12,
     inProgressLeads: -5,
@@ -95,7 +89,7 @@ const Dashboard: React.FC = () => {
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-[240px] justify-start text-left font-normal">
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange.from ? (
+                    {dateRange?.from ? (
                       dateRange.to ? (
                         <>
                           {format(dateRange.from, "dd/MM/yyyy")} - {format(dateRange.to, "dd/MM/yyyy")}
@@ -112,7 +106,7 @@ const Dashboard: React.FC = () => {
                   <Calendar
                     mode="range"
                     selected={dateRange}
-                    onSelect={(range) => setDateRange(range)}
+                    onSelect={setDateRange}
                     initialFocus
                     className={cn("p-3 pointer-events-auto")}
                   />
