@@ -2,31 +2,26 @@ import React, { useState } from "react";
 import Layout from "../components/layout/Layout";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import {
   ArrowDown,
-  ArrowRight,
   ArrowUp,
   Calendar as CalendarIcon,
   Download,
-  Filter,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { mockKanbanColumns } from "../services/mockData";
 import { cn } from "@/lib/utils";
 import { DashboardFilter } from "@/types";
 import { DateRange } from "react-day-picker";
+import FunnelChart from "@/components/charts/FunnelChart";
 
 const Dashboard: React.FC = () => {
   const [filter, setFilter] = useState<DashboardFilter>({
@@ -209,37 +204,7 @@ const Dashboard: React.FC = () => {
         </Card>
       </div>
       
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Funil de Vendas</CardTitle>
-          <CardDescription>Distribuição de leads por etapa do processo</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart
-              layout="vertical"
-              data={funnelData}
-              margin={{
-                top: 5,
-                right: 30,
-                left: 80,
-                bottom: 5,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis dataKey="name" type="category" tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Bar
-                dataKey="value"
-                fill="#1A73E8"
-                radius={[0, 4, 4, 0]}
-                label={{ position: 'right', fontSize: 12 }}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      <FunnelChart data={funnelData} />
     </Layout>
   );
 };
