@@ -37,7 +37,9 @@ class EvolutionAPIService {
       });
 
       if (!response.ok) {
-        throw new Error(`API error: ${response.status} - ${await response.text()}`);
+        const errorText = await response.text();
+        console.error(`API error (${response.status}): ${errorText}`);
+        throw new Error(`API error: ${response.status} - ${errorText}`);
       }
 
       return await response.json();
@@ -52,11 +54,20 @@ class EvolutionAPIService {
   async getInstance(): Promise<EvolutionAPIInstance> {
     try {
       const result = await this.request(`instance/connectionState/${this.instanceName}`);
+      console.log("getInstance response:", result);
+      
+      // Check if there's a QR code available
+      let qrcode = undefined;
+      if (result.state === 'connecting' || result.state === 'qrcode') {
+        qrcode = result.qrcode;
+      }
+      
       return {
         instanceName: this.instanceName,
         token: this.token,
-        status: result.state === 'open' ? 'connected' : 'disconnected',
-        qrcode: result.state === 'pending' ? result.qrcode : undefined
+        status: result.state === 'open' ? 'connected' : 
+                (result.state === 'connecting' || result.state === 'qrcode') ? 'connecting' : 'disconnected',
+        qrcode: qrcode
       };
     } catch (error) {
       console.error("Failed to get instance status:", error);
@@ -70,7 +81,7 @@ class EvolutionAPIService {
 
   async createInstance(): Promise<EvolutionAPIInstance> {
     try {
-      await this.request('instance/create', {
+      const result = await this.request('instance/create', {
         method: 'POST',
         body: JSON.stringify({
           instanceName: this.instanceName,
@@ -79,6 +90,7 @@ class EvolutionAPIService {
         })
       });
       
+      console.log("Create instance response:", result);
       return this.getInstance();
     } catch (error) {
       console.error("Failed to create instance:", error);
@@ -92,15 +104,30 @@ class EvolutionAPIService {
 
   async connectInstance(): Promise<string | null> {
     try {
-      const response = await this.request(`instance/connect/${this.instanceName}`, {
-        method: 'POST'
-      });
+      // First check if instance exists
+      const instanceCheck = await this.getInstance();
       
-      if (response.qrcode) {
-        return response.qrcode;
-      } else {
-        return null;
+      // If not connected, initiate connection
+      if (instanceCheck.status !== 'connected') {
+        const response = await this.request(`instance/connect/${this.instanceName}`, {
+          method: 'POST'
+        });
+        
+        console.log("Connect instance response:", response);
+        
+        // Wait a moment and check for QR code
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const updatedInstance = await this.getInstance();
+        console.log("Updated instance after connect:", updatedInstance);
+        
+        if (updatedInstance.qrcode) {
+          return updatedInstance.qrcode;
+        }
       }
+      
+      // If we get here either we're already connected or no QR was generated
+      return null;
     } catch (error) {
       console.error("Failed to connect instance:", error);
       return null;

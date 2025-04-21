@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useWhatsappConnection } from '@/hooks/use-whatsapp-connection';
 import { Button } from '@/components/ui/button';
 import { Loader2, Smartphone, QrCode, Check, X } from 'lucide-react';
@@ -26,13 +26,18 @@ const WhatsappConnection: React.FC<WhatsappConnectionProps> = ({ onConnectionSta
   } = useWhatsappConnection();
   const [showQrDialog, setShowQrDialog] = React.useState(false);
   
+  // Debug outputs
+  useEffect(() => {
+    console.log("WhatsappConnection render - QR code:", qrCode);
+    console.log("WhatsappConnection render - instance status:", instance?.status);
+  }, [qrCode, instance]);
+
   // Show QR dialog when qrCode is available
   React.useEffect(() => {
     if (qrCode) {
+      console.log("QR code detected, showing dialog");
       setShowQrDialog(true);
-    } else {
-      setShowQrDialog(false);
-    }
+    } 
   }, [qrCode]);
   
   // Notify parent component about connection state changes
@@ -94,6 +99,9 @@ const WhatsappConnection: React.FC<WhatsappConnectionProps> = ({ onConnectionSta
                   alt="WhatsApp QR Code" 
                   className="w-64 h-64"
                 />
+                <p className="text-center text-sm mt-2">
+                  Escaneie este código com o aplicativo WhatsApp no seu celular
+                </p>
               </div>
             ) : loading ? (
               <div className="py-12 flex flex-col items-center">

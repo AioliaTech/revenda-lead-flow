@@ -13,9 +13,11 @@ export function useWhatsappConnection() {
     try {
       setLoading(true);
       const instanceData = await evolutionAPIService.getInstance();
+      console.log("Checking connection, instance data:", instanceData);
       setInstance(instanceData);
       
       if (instanceData.status === 'connecting' && instanceData.qrcode) {
+        console.log("QR code available:", instanceData.qrcode);
         setQrCode(instanceData.qrcode);
       } else {
         setQrCode(null);
@@ -36,15 +38,22 @@ export function useWhatsappConnection() {
       
       // Create instance if it doesn't exist
       if (!instance) {
-        await evolutionAPIService.createInstance();
+        const createdInstance = await evolutionAPIService.createInstance();
+        console.log("Instance created:", createdInstance);
       }
       
       // Connect and get QR code
+      console.log("Connecting to WhatsApp...");
       const qrcode = await evolutionAPIService.connectInstance();
-      setQrCode(qrcode);
+      console.log("Got QR code:", qrcode);
       
-      if (!qrcode && instance?.status === 'connected') {
+      if (qrcode) {
+        setQrCode(qrcode);
+        showSuccessToast("QR Code gerado com sucesso!");
+      } else if (instance?.status === 'connected') {
         showSuccessToast("WhatsApp conectado com sucesso!");
+      } else {
+        showErrorToast("Falha ao gerar QR Code");
       }
       
       await checkConnection();
