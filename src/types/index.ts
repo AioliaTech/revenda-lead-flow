@@ -1,3 +1,4 @@
+
 import { DateRange as DayPickerDateRange } from "react-day-picker";
 
 export type DateRange = DayPickerDateRange;
@@ -12,7 +13,7 @@ export interface Lead {
   birthDate: string;
   source: string;
   vehicleOfInterest: string;
-  paymentMethod: "cash" | "trade" | "financing";
+  paymentMethod: "cash" | "trade" | "financing";  // Updated to include all options
   tradeInfo?: {
     model: string;
     year: string;

@@ -44,7 +44,7 @@ const KanbanPage: React.FC = () => {
     address: "",
     source: "",
     vehicleOfInterest: "",
-    paymentMethod: "cash" as const,
+    paymentMethod: "cash" as "cash" | "trade" | "financing", // Updated type
     status: "",
     notes: "",
   });
@@ -225,9 +225,10 @@ const KanbanPage: React.FC = () => {
         address: formData.address,
         source: formData.source,
         vehicleOfInterest: formData.vehicleOfInterest,
-        paymentMethod: formData.paymentMethod as "cash" | "financing" | "trade",
+        paymentMethod: formData.paymentMethod,
         status: formData.status || selectedLead.status,
         notes: formData.notes,
+        updatedAt: new Date().toISOString()
       };
       
       // In a real app, we would update the lead in the database
@@ -247,10 +248,12 @@ const KanbanPage: React.FC = () => {
         address: formData.address,
         source: formData.source,
         vehicleOfInterest: formData.vehicleOfInterest,
-        paymentMethod: formData.paymentMethod as "cash" | "financing" | "trade",
+        paymentMethod: formData.paymentMethod,
         status: formData.status,
         notes: formData.notes,
         tags: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
       
       // Add lead to selected column
@@ -285,7 +288,7 @@ const KanbanPage: React.FC = () => {
       address: "",
       source: "",
       vehicleOfInterest: "",
-      paymentMethod: "cash",
+      paymentMethod: "cash" as "cash" | "trade" | "financing", // Updated type
       status: "",
       notes: "",
     });

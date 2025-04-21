@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import Layout from "../components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -42,7 +41,7 @@ const LeadsPage: React.FC = () => {
     birthDate: "",
     source: "",
     vehicleOfInterest: "",
-    paymentMethod: "cash" as const,
+    paymentMethod: "cash" as "cash" | "trade" | "financing",
     tradeInfo: {
       model: "",
       year: "",
@@ -119,7 +118,8 @@ const LeadsPage: React.FC = () => {
               paymentMethod: formData.paymentMethod,
               tradeInfo: formData.tradeInfo,
               financingInfo: formData.financingInfo,
-              notes: formData.notes
+              notes: formData.notes,
+              updatedAt: new Date().toISOString()
             }
           : lead
       );
@@ -143,7 +143,9 @@ const LeadsPage: React.FC = () => {
         financingInfo: formData.financingInfo,
         notes: formData.notes,
         tags: [],
-        status: "novo"
+        status: "novo",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
       
       setLeads([...leads, newLead]);
@@ -208,7 +210,7 @@ const LeadsPage: React.FC = () => {
       birthDate: "",
       source: "",
       vehicleOfInterest: "",
-      paymentMethod: "cash" as const,
+      paymentMethod: "cash" as "cash" | "trade" | "financing",
       tradeInfo: {
         model: "",
         year: "",
