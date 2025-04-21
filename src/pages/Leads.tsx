@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { mockLeads, mockTags } from "../services/mockData";
+import { mockLeads, mockTags, mockKanbanColumns } from "../services/mockData";
 import { Lead, Tag } from "../types";
 
 const LeadsPage: React.FC = () => {
@@ -39,7 +39,7 @@ const LeadsPage: React.FC = () => {
     birthDate: "",
     source: "",
     vehicleOfInterest: "",
-    paymentMethod: "cash",
+    paymentMethod: "cash" as const,
     tradeInfo: {
       model: "",
       year: "",
@@ -69,7 +69,7 @@ const LeadsPage: React.FC = () => {
       setFormData({
         ...formData,
         [parent]: {
-          ...formData[parent as keyof typeof formData],
+          ...(formData[parent as keyof typeof formData] as Record<string, string>),
           [child]: value,
         },
       });
