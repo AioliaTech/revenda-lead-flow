@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import Layout from "../components/layout/Layout";
 import { Button } from "@/components/ui/button";
-import { Plus, Smartphone, Check, X } from "lucide-react";
+import { Plus, Smartphone, Check, X, Save, Edit, Trash2 } from "lucide-react";
 import {
   Tabs,
   TabsContent,
@@ -21,13 +21,124 @@ import { Input } from "@/components/ui/input";
 import { mockChannels, mockKanbanColumns, mockUsers } from "../services/mockData";
 import { Channel, KanbanColumn, User } from "../types";
 import { Toggle } from "@/components/ui/toggle";
+import { showSuccessToast, showConfirmationToast } from "@/components/ui/toast-helper";
+import { Toaster } from "@/components/ui/toaster";
 
 const SettingsPage: React.FC = () => {
   const [channels, setChannels] = useState<Channel[]>(mockChannels);
   const [columns, setColumns] = useState<KanbanColumn[]>(mockKanbanColumns);
   const [users, setUsers] = useState<User[]>(mockUsers);
   
-  const [showQRCode, setShowQRCode] = useState(false);
+  const [showQRCode, setShowQRCode] = useState<string | null>(null);
+  const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
+  const [editingColumnTitle, setEditingColumnTitle] = useState("");
+  const [showAddUserDialog, setShowAddUserDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+
+  // Toggle channel status
+  const handleToggleChannel = (channelId: string) => {
+    setChannels(channels.map(channel => 
+      channel.id === channelId 
+        ? { ...channel, isActive: !channel.isActive } 
+        : channel
+    ));
+    
+    const channel = channels.find(c => c.id === channelId);
+    if (channel) {
+      showSuccessToast(`Canal ${channel.isActive ? 'desativado' : 'ativado'} com sucesso!`);
+    }
+  };
+
+  // Disconnect channel
+  const handleDisconnectChannel = (channelId: string) => {
+    showConfirmationToast(
+      "Tem certeza que deseja desconectar este canal?",
+      () => {
+        setChannels(channels.map(channel => 
+          channel.id === channelId 
+            ? { ...channel, isActive: false } 
+            : channel
+        ));
+        showSuccessToast("Canal desconectado com sucesso!");
+      }
+    );
+  };
+
+  // Reconnect channel
+  const handleReconnectChannel = (channelId: string) => {
+    setShowQRCode(channelId);
+    // In a real app, this would initiate the QR code generation process
+  };
+
+  // Edit column
+  const startEditColumn = (column: KanbanColumn) => {
+    setEditingColumnId(column.id);
+    setEditingColumnTitle(column.title);
+  };
+
+  const saveEditColumn = (columnId: string) => {
+    if (editingColumnTitle.trim() === "") return;
+    
+    setColumns(columns.map(col => 
+      col.id === columnId 
+        ? { ...col, title: editingColumnTitle } 
+        : col
+    ));
+    
+    setEditingColumnId(null);
+    setEditingColumnTitle("");
+    showSuccessToast("Coluna atualizada com sucesso!");
+  };
+
+  const cancelEditColumn = () => {
+    setEditingColumnId(null);
+    setEditingColumnTitle("");
+  };
+
+  // Delete column
+  const handleDeleteColumn = (columnId: string) => {
+    showConfirmationToast(
+      "Tem certeza que deseja excluir esta coluna?",
+      () => {
+        setColumns(columns.filter(col => col.id !== columnId));
+        showSuccessToast("Coluna excluída com sucesso!");
+      }
+    );
+  };
+
+  // Save all column changes
+  const saveColumnChanges = () => {
+    // In a real app, this would send the updated columns to the server
+    showSuccessToast("Alterações salvas com sucesso!");
+  };
+
+  // Restore default columns
+  const restoreDefaultColumns = () => {
+    showConfirmationToast(
+      "Tem certeza que deseja restaurar as colunas padrão?",
+      () => {
+        setColumns(mockKanbanColumns);
+        showSuccessToast("Colunas padrão restauradas com sucesso!");
+      }
+    );
+  };
+
+  // User management
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setShowAddUserDialog(true);
+    // In a real app, this would open a form pre-filled with user data
+  };
+
+  const handleRemoveUser = (userId: string) => {
+    showConfirmationToast(
+      "Tem certeza que deseja remover este usuário?",
+      () => {
+        setUsers(users.filter(user => user.id !== userId));
+        showSuccessToast("Usuário removido com sucesso!");
+      }
+    );
+  };
   
   return (
     <Layout title="Configurações">
@@ -41,7 +152,13 @@ const SettingsPage: React.FC = () => {
         <TabsContent value="whatsapp">
           <div className="mb-6 flex justify-between items-center">
             <h2 className="text-2xl font-medium">Canais WhatsApp</h2>
-            <Button className="bg-crm-primary gap-2">
+            <Button 
+              className="bg-crm-primary gap-2"
+              onClick={() => {
+                // In a real app, this would open a form to configure a new channel
+                showSuccessToast("Iniciando configuração de novo canal...");
+              }}
+            >
               <Plus className="h-4 w-4" /> Conectar Novo Canal
             </Button>
           </div>
@@ -58,9 +175,7 @@ const SettingsPage: React.FC = () => {
                     <div>
                       <Toggle
                         pressed={channel.isActive}
-                        onPressedChange={() => {
-                          // Toggle status in real app
-                        }}
+                        onPressedChange={() => handleToggleChannel(channel.id)}
                       >
                         {channel.isActive ? "Ativo" : "Inativo"}
                       </Toggle>
@@ -81,15 +196,20 @@ const SettingsPage: React.FC = () => {
                   </div>
                 </CardContent>
                 <CardFooter className="border-t pt-4 flex justify-between">
-                  <Button variant="outline">Desconectar</Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => handleDisconnectChannel(channel.id)}
+                  >
+                    Desconectar
+                  </Button>
                   <Button 
                     className="bg-crm-primary"
-                    onClick={() => setShowQRCode(!showQRCode)}
+                    onClick={() => handleReconnectChannel(channel.id)}
                   >
                     Reconectar
                   </Button>
                 </CardFooter>
-                {showQRCode && (
+                {showQRCode === channel.id && (
                   <div className="px-6 pb-6">
                     <div className="border rounded-md p-4">
                       <div className="mb-4 text-center">
@@ -115,6 +235,14 @@ const SettingsPage: React.FC = () => {
                       <div className="text-center">
                         <p className="text-sm text-gray-500">O QR Code expira em <span className="font-medium">1:30</span></p>
                       </div>
+                      <div className="mt-4 flex justify-end">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setShowQRCode(null)}
+                        >
+                          Fechar
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -139,20 +267,71 @@ const SettingsPage: React.FC = () => {
                 {columns.map((column, index) => (
                   <div key={column.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-md">
                     <div className="text-gray-500 font-medium">{index + 1}</div>
-                    <Input value={column.title} className="flex-1" />
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <X className="h-4 w-4" />
-                    </Button>
+                    {editingColumnId === column.id ? (
+                      <Input 
+                        value={editingColumnTitle} 
+                        onChange={(e) => setEditingColumnTitle(e.target.value)}
+                        className="flex-1" 
+                      />
+                    ) : (
+                      <Input value={column.title} className="flex-1" readOnly />
+                    )}
+                    {editingColumnId === column.id ? (
+                      <>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0"
+                          onClick={() => saveEditColumn(column.id)}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0"
+                          onClick={cancelEditColumn}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0"
+                          onClick={() => startEditColumn(column)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0 text-crm-danger"
+                          onClick={() => handleDeleteColumn(column.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
             </CardContent>
             <CardFooter className="border-t pt-4 flex justify-between">
-              <Button variant="outline">Restaurar Padrões</Button>
-              <Button className="bg-crm-primary">Salvar Alterações</Button>
+              <Button 
+                variant="outline"
+                onClick={restoreDefaultColumns}
+              >
+                Restaurar Padrões
+              </Button>
+              <Button 
+                className="bg-crm-primary"
+                onClick={saveColumnChanges}
+              >
+                Salvar Alterações
+              </Button>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -163,7 +342,10 @@ const SettingsPage: React.FC = () => {
               <h2 className="text-2xl font-medium">Usuários</h2>
               <p className="text-gray-500">Gerencie os usuários e suas permissões</p>
             </div>
-            <Button className="bg-crm-primary gap-2">
+            <Button 
+              className="bg-crm-primary gap-2"
+              onClick={() => setShowAddUserDialog(true)}
+            >
               <Plus className="h-4 w-4" /> Adicionar Usuário
             </Button>
           </div>
@@ -191,8 +373,19 @@ const SettingsPage: React.FC = () => {
                         {user.role === 'admin' ? 'Administrador' : 
                          user.role === 'manager' ? 'Gerente' : 'Vendedor'}
                       </span>
-                      <Button variant="outline" size="sm">Editar</Button>
-                      <Button variant="ghost" size="sm" className="text-crm-danger">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEditUser(user)}
+                      >
+                        Editar
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-crm-danger"
+                        onClick={() => handleRemoveUser(user.id)}
+                      >
                         Remover
                       </Button>
                     </div>
@@ -203,6 +396,7 @@ const SettingsPage: React.FC = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      <Toaster />
     </Layout>
   );
 };

@@ -10,7 +10,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { 
@@ -23,11 +22,15 @@ import {
 } from "@/components/ui/table";
 import { mockLeads, mockTags, mockKanbanColumns } from "../services/mockData";
 import { Lead, Tag } from "../types";
+import { showSuccessToast, showConfirmationToast } from "@/components/ui/toast-helper";
+import { Toaster } from "@/components/ui/toaster";
 
 const LeadsPage: React.FC = () => {
+  const [leads, setLeads] = useState<Lead[]>(mockLeads);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showAddLeadDialog, setShowAddLeadDialog] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   
   // Form state for new leads
   const [formData, setFormData] = useState({
@@ -55,7 +58,7 @@ const LeadsPage: React.FC = () => {
   const [showTradeFields, setShowTradeFields] = useState(false);
   const [showFinancingFields, setShowFinancingFields] = useState(false);
   
-  const filteredLeads = mockLeads.filter(lead => 
+  const filteredLeads = leads.filter(lead => 
     lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     lead.phone.includes(searchTerm) ||
     lead.vehicleOfInterest.toLowerCase().includes(searchTerm.toLowerCase())
@@ -98,9 +101,131 @@ const LeadsPage: React.FC = () => {
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isEditing && selectedLead) {
+      // Update existing lead
+      const updatedLeads = leads.map(lead => 
+        lead.id === selectedLead.id
+          ? {
+              ...lead,
+              name: formData.name,
+              phone: formData.phone,
+              email: formData.email,
+              address: formData.address,
+              cpf: formData.cpf,
+              birthDate: formData.birthDate,
+              source: formData.source,
+              vehicleOfInterest: formData.vehicleOfInterest,
+              paymentMethod: formData.paymentMethod,
+              tradeInfo: formData.tradeInfo,
+              financingInfo: formData.financingInfo,
+              notes: formData.notes
+            }
+          : lead
+      );
+      
+      setLeads(updatedLeads);
+      showSuccessToast("Lead atualizado com sucesso!");
+    } else {
+      // Add new lead
+      const newLead: Lead = {
+        id: `lead-${Date.now()}`,
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        cpf: formData.cpf,
+        birthDate: formData.birthDate,
+        source: formData.source,
+        vehicleOfInterest: formData.vehicleOfInterest,
+        paymentMethod: formData.paymentMethod,
+        tradeInfo: formData.tradeInfo,
+        financingInfo: formData.financingInfo,
+        notes: formData.notes,
+        tags: [],
+        status: "novo"
+      };
+      
+      setLeads([...leads, newLead]);
+      showSuccessToast("Lead adicionado com sucesso!");
+    }
+    
+    resetForm();
+  };
+  
+  const handleEditLead = (lead: Lead) => {
+    setSelectedLead(lead);
+    setFormData({
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email || "",
+      address: lead.address || "",
+      cpf: lead.cpf || "",
+      birthDate: lead.birthDate || "",
+      source: lead.source || "",
+      vehicleOfInterest: lead.vehicleOfInterest,
+      paymentMethod: lead.paymentMethod,
+      tradeInfo: lead.tradeInfo || {
+        model: "",
+        year: "",
+        km: "",
+        downPayment: ""
+      },
+      financingInfo: lead.financingInfo || {
+        downPayment: ""
+      },
+      notes: lead.notes || ""
+    });
+    
+    setShowTradeFields(lead.paymentMethod === "trade");
+    setShowFinancingFields(lead.paymentMethod === "financing");
+    setIsEditing(true);
+    setShowAddLeadDialog(true);
+  };
+  
+  const handleDeleteLead = (leadId: string) => {
+    showConfirmationToast(
+      "Tem certeza que deseja excluir este lead?",
+      () => {
+        setLeads(leads.filter(lead => lead.id !== leadId));
+        showSuccessToast("Lead excluído com sucesso!");
+      }
+    );
+  };
+  
+  const handleOpenChat = (leadId: string) => {
+    // In a real app, this would navigate to the chat page with this lead
+    showSuccessToast("Abrindo chat com o lead...");
+  };
+  
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      phone: "",
+      email: "",
+      address: "",
+      cpf: "",
+      birthDate: "",
+      source: "",
+      vehicleOfInterest: "",
+      paymentMethod: "cash" as const,
+      tradeInfo: {
+        model: "",
+        year: "",
+        km: "",
+        downPayment: ""
+      },
+      financingInfo: {
+        downPayment: ""
+      },
+      notes: ""
+    });
+    
+    setShowTradeFields(false);
+    setShowFinancingFields(false);
+    setIsEditing(false);
+    setSelectedLead(null);
     setShowAddLeadDialog(false);
-    // In a real app, we would add the lead to the database
-    alert("Lead adicionado com sucesso!");
   };
   
   return (
@@ -120,7 +245,13 @@ const LeadsPage: React.FC = () => {
             <Filter className="h-4 w-4" /> Filtros
           </Button>
         </div>
-        <Button className="bg-crm-primary gap-2" onClick={() => setShowAddLeadDialog(true)}>
+        <Button 
+          className="bg-crm-primary gap-2" 
+          onClick={() => {
+            resetForm();
+            setShowAddLeadDialog(true);
+          }}
+        >
           <Plus className="h-4 w-4" /> Adicionar Lead
         </Button>
       </div>
@@ -175,18 +306,28 @@ const LeadsPage: React.FC = () => {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end space-x-2">
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0"
+                      onClick={() => handleOpenChat(lead.id)}
+                    >
                       <MessageSquare className="h-4 w-4 text-crm-primary" />
                     </Button>
                     <Button 
                       variant="ghost" 
                       size="sm" 
                       className="h-8 w-8 p-0"
-                      onClick={() => setSelectedLead(lead)}
+                      onClick={() => handleEditLead(lead)}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-8 w-8 p-0"
+                      onClick={() => handleDeleteLead(lead.id)}
+                    >
                       <Trash2 className="h-4 w-4 text-crm-danger" />
                     </Button>
                   </div>
@@ -201,9 +342,12 @@ const LeadsPage: React.FC = () => {
       <Dialog open={showAddLeadDialog} onOpenChange={setShowAddLeadDialog}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Adicionar Novo Lead</DialogTitle>
+            <DialogTitle>{isEditing ? "Editar Lead" : "Adicionar Novo Lead"}</DialogTitle>
             <DialogDescription>
-              Preencha os dados para adicionar um novo lead ao sistema.
+              {isEditing 
+                ? "Edite os dados do lead existente."
+                : "Preencha os dados para adicionar um novo lead ao sistema."
+              }
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
@@ -395,31 +539,15 @@ const LeadsPage: React.FC = () => {
             </div>
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => setShowAddLeadDialog(false)}>Cancelar</Button>
-              <Button type="submit" className="bg-crm-primary">Adicionar Lead</Button>
+              <Button type="submit" className="bg-crm-primary">
+                {isEditing ? "Salvar Alterações" : "Adicionar Lead"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
       
-      {/* Edit Lead Dialog (reuses the same form) */}
-      <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Editar Lead</DialogTitle>
-            <DialogDescription>
-              Atualize os dados do lead no sistema.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-4">
-            {/* Same form structure as add lead */}
-            {/* In a real app, we would pre-fill the form with the selected lead data */}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedLead(null)}>Cancelar</Button>
-            <Button className="bg-crm-primary">Salvar Alterações</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Toaster />
     </Layout>
   );
 };

@@ -10,16 +10,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { mockKanbanColumns, mockLeads, mockTags, getLeadsForColumn } from "../services/mockData";
 import { KanbanColumn, Lead, Tag } from "../types";
+import { showSuccessToast, showConfirmationToast } from "@/components/ui/toast-helper";
+import { Toaster } from "@/components/ui/toaster";
 
 const KanbanPage: React.FC = () => {
   const [columns, setColumns] = useState<KanbanColumn[]>(mockKanbanColumns);
   const [editMode, setEditMode] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [isEditingLead, setIsEditingLead] = useState(false);
   
   const [draggedLead, setDraggedLead] = useState<string | null>(null);
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
@@ -30,6 +32,22 @@ const KanbanPage: React.FC = () => {
   // Column being edited
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
   const [editingColumnTitle, setEditingColumnTitle] = useState("");
+  
+  // New lead being created
+  const [showAddLeadForm, setShowAddLeadForm] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    cpf: "",
+    birthDate: "",
+    address: "",
+    source: "",
+    vehicleOfInterest: "",
+    paymentMethod: "cash" as const,
+    status: "",
+    notes: "",
+  });
   
   const handleDragStart = (leadId: string, columnId: string) => {
     setDraggedLead(leadId);
@@ -49,29 +67,39 @@ const KanbanPage: React.FC = () => {
         return;
       }
       
-      // Remove from source column
-      const updatedColumns = columns.map(col => {
-        if (col.id === draggedColumn) {
-          return {
-            ...col,
-            leadIds: col.leadIds.filter(id => id !== draggedLead)
-          };
-        }
-        return col;
-      });
+      // Find the lead being moved
+      const lead = mockLeads.find(l => l.id === draggedLead);
       
-      // Add to target column
-      const finalColumns = updatedColumns.map(col => {
-        if (col.id === columnId) {
-          return {
-            ...col,
-            leadIds: [...col.leadIds, draggedLead]
-          };
-        }
-        return col;
-      });
+      if (lead) {
+        // Update lead's status
+        lead.status = columnId;
+        
+        // Remove from source column
+        const updatedColumns = columns.map(col => {
+          if (col.id === draggedColumn) {
+            return {
+              ...col,
+              leadIds: col.leadIds.filter(id => id !== draggedLead)
+            };
+          }
+          return col;
+        });
+        
+        // Add to target column
+        const finalColumns = updatedColumns.map(col => {
+          if (col.id === columnId) {
+            return {
+              ...col,
+              leadIds: [...col.leadIds, draggedLead]
+            };
+          }
+          return col;
+        });
+        
+        setColumns(finalColumns);
+        showSuccessToast(`Lead movido para ${columns.find(col => col.id === columnId)?.title}`);
+      }
       
-      setColumns(finalColumns);
       setDraggedLead(null);
       setDraggedColumn(null);
     }
@@ -88,10 +116,24 @@ const KanbanPage: React.FC = () => {
     
     setColumns([...columns, newColumn]);
     setNewColumnTitle("");
+    showSuccessToast("Coluna adicionada com sucesso!");
   };
   
   const handleRemoveColumn = (columnId: string) => {
-    setColumns(columns.filter(col => col.id !== columnId));
+    showConfirmationToast(
+      "Tem certeza que deseja excluir esta coluna?",
+      () => {
+        // Check if column has leads
+        const column = columns.find(col => col.id === columnId);
+        if (column && column.leadIds.length > 0) {
+          showSuccessToast("Remova todos os leads desta coluna antes de excluí-la.");
+          return;
+        }
+        
+        setColumns(columns.filter(col => col.id !== columnId));
+        showSuccessToast("Coluna excluída com sucesso!");
+      }
+    );
   };
   
   const handleEditColumnStart = (column: KanbanColumn) => {
@@ -111,6 +153,7 @@ const KanbanPage: React.FC = () => {
     
     setEditingColumnId(null);
     setEditingColumnTitle("");
+    showSuccessToast("Coluna atualizada com sucesso!");
   };
   
   const handleEditColumnCancel = () => {
@@ -134,102 +177,148 @@ const KanbanPage: React.FC = () => {
     setSelectedLead(lead);
   };
   
+  const handleEditLead = () => {
+    if (selectedLead) {
+      setIsEditingLead(true);
+      setFormData({
+        name: selectedLead.name,
+        phone: selectedLead.phone,
+        email: selectedLead.email || "",
+        cpf: selectedLead.cpf || "",
+        birthDate: selectedLead.birthDate || "",
+        address: selectedLead.address || "",
+        source: selectedLead.source || "",
+        vehicleOfInterest: selectedLead.vehicleOfInterest,
+        paymentMethod: selectedLead.paymentMethod,
+        status: selectedLead.status,
+        notes: selectedLead.notes || "",
+      });
+    }
+  };
+  
+  const handleOpenLeadChat = () => {
+    // In a real app, this would navigate to the chat with this lead
+    showSuccessToast("Abrindo chat com o lead...");
+    setSelectedLead(null);
+  };
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+  };
+  
+  const handleAddLeadSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (isEditingLead && selectedLead) {
+      // Update existing lead
+      const updatedLead = {
+        ...selectedLead,
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email,
+        cpf: formData.cpf,
+        birthDate: formData.birthDate,
+        address: formData.address,
+        source: formData.source,
+        vehicleOfInterest: formData.vehicleOfInterest,
+        paymentMethod: formData.paymentMethod as "cash" | "financing" | "trade",
+        status: formData.status || selectedLead.status,
+        notes: formData.notes,
+      };
+      
+      // In a real app, we would update the lead in the database
+      showSuccessToast("Lead atualizado com sucesso!");
+      
+      setSelectedLead(null);
+      setIsEditingLead(false);
+    } else {
+      // Create new lead
+      const newLead: Lead = {
+        id: `lead-${Date.now()}`,
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email,
+        cpf: formData.cpf,
+        birthDate: formData.birthDate,
+        address: formData.address,
+        source: formData.source,
+        vehicleOfInterest: formData.vehicleOfInterest,
+        paymentMethod: formData.paymentMethod as "cash" | "financing" | "trade",
+        status: formData.status,
+        notes: formData.notes,
+        tags: [],
+      };
+      
+      // Add lead to selected column
+      const updatedColumns = columns.map(col => {
+        if (col.id === newLead.status) {
+          return {
+            ...col,
+            leadIds: [...col.leadIds, newLead.id]
+          };
+        }
+        return col;
+      });
+      
+      setColumns(updatedColumns);
+      
+      // In a real app, we would add the lead to the database
+      mockLeads.push(newLead);
+      
+      showSuccessToast("Lead adicionado com sucesso!");
+    }
+    
+    resetForm();
+  };
+  
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      phone: "",
+      email: "",
+      cpf: "",
+      birthDate: "",
+      address: "",
+      source: "",
+      vehicleOfInterest: "",
+      paymentMethod: "cash",
+      status: "",
+      notes: "",
+    });
+    setShowAddLeadForm(false);
+    setIsEditingLead(false);
+  };
+  
+  const toggleEditMode = () => {
+    if (editMode) {
+      // Save changes when exiting edit mode
+      showSuccessToast("Alterações salvas com sucesso!");
+    }
+    setEditMode(!editMode);
+  };
+  
   return (
     <Layout title="Kanban">
       <div className="mb-6 flex justify-between items-center">
         <div>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="bg-crm-primary">
-                <Plus className="mr-2 h-4 w-4" />
-                Nova Oportunidade
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Adicionar Nova Oportunidade</DialogTitle>
-                <DialogDescription>
-                  Preencha os dados para adicionar um novo lead ao sistema.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Dados Cadastrais</h3>
-                  <div className="form-input-wrapper">
-                    <label className="form-label">Nome</label>
-                    <input className="form-input" placeholder="Nome completo" />
-                  </div>
-                  <div className="form-input-wrapper">
-                    <label className="form-label">WhatsApp</label>
-                    <input className="form-input" placeholder="(00) 00000-0000" />
-                  </div>
-                  <div className="form-input-wrapper">
-                    <label className="form-label">E-mail</label>
-                    <input className="form-input" placeholder="email@exemplo.com" />
-                  </div>
-                  <div className="form-input-wrapper">
-                    <label className="form-label">CPF</label>
-                    <input className="form-input" placeholder="000.000.000-00" />
-                  </div>
-                  <div className="form-input-wrapper">
-                    <label className="form-label">Data de Nascimento</label>
-                    <input className="form-input" placeholder="00/00/0000" />
-                  </div>
-                  <div className="form-input-wrapper">
-                    <label className="form-label">Endereço</label>
-                    <input className="form-input" placeholder="Rua, número, bairro" />
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Dados Comerciais</h3>
-                  <div className="form-input-wrapper">
-                    <label className="form-label">Origem do Lead</label>
-                    <select className="form-input">
-                      <option>Facebook</option>
-                      <option>Instagram</option>
-                      <option>Google</option>
-                      <option>Indicação</option>
-                      <option>Site</option>
-                    </select>
-                  </div>
-                  <div className="form-input-wrapper">
-                    <label className="form-label">Veículo de Interesse</label>
-                    <input className="form-input" placeholder="Modelo e ano" />
-                  </div>
-                  <div className="form-input-wrapper">
-                    <label className="form-label">Forma de Pagamento</label>
-                    <select className="form-input">
-                      <option value="cash">À Vista</option>
-                      <option value="trade">Troca</option>
-                      <option value="financing">Financiamento</option>
-                    </select>
-                  </div>
-                  <div className="form-input-wrapper">
-                    <label className="form-label">Status</label>
-                    <select className="form-input">
-                      {columns.map((column) => (
-                        <option key={column.id} value={column.id}>
-                          {column.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-input-wrapper">
-                    <label className="form-label">Observações</label>
-                    <textarea className="form-input h-24" placeholder="Informações adicionais"></textarea>
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline">Cancelar</Button>
-                <Button className="bg-crm-primary">Adicionar Lead</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button 
+            className="bg-crm-primary"
+            onClick={() => {
+              resetForm();
+              setShowAddLeadForm(true);
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Nova Oportunidade
+          </Button>
         </div>
         <Button 
           variant={editMode ? "destructive" : "outline"} 
-          onClick={() => setEditMode(!editMode)}
+          onClick={toggleEditMode}
         >
           {editMode ? "Finalizar Edição" : "Editar Colunas"}
         </Button>
@@ -316,7 +405,8 @@ const KanbanPage: React.FC = () => {
                       className="h-7 w-7 p-0 rounded-full"
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Open chat
+                        // Open chat with this lead
+                        showSuccessToast("Abrindo chat com o lead...");
                       }}
                     >
                       <MessageSquare className="h-3 w-3 text-crm-primary" />
@@ -352,7 +442,7 @@ const KanbanPage: React.FC = () => {
       {/* Lead Details Dialog */}
       <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
         <DialogContent className="sm:max-w-2xl">
-          {selectedLead && (
+          {selectedLead && !isEditingLead && (
             <>
               <DialogHeader>
                 <DialogTitle>{selectedLead.name}</DialogTitle>
@@ -407,16 +497,309 @@ const KanbanPage: React.FC = () => {
               </div>
               
               <DialogFooter>
-                <Button variant="outline">Editar Lead</Button>
-                <Button className="bg-crm-primary">
+                <Button variant="outline" onClick={handleEditLead}>Editar Lead</Button>
+                <Button className="bg-crm-primary" onClick={handleOpenLeadChat}>
                   <MessageSquare className="mr-2 h-4 w-4" />
                   Ir para Chat
                 </Button>
               </DialogFooter>
             </>
           )}
+
+          {/* Lead Edit Form */}
+          {isEditingLead && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Editar Lead</DialogTitle>
+                <DialogDescription>
+                  Atualize os dados do lead
+                </DialogDescription>
+              </DialogHeader>
+              
+              <form onSubmit={handleAddLeadSubmit}>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div>
+                      <label className="form-label">Nome</label>
+                      <Input 
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">WhatsApp</label>
+                      <Input 
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">E-mail</label>
+                      <Input 
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">CPF</label>
+                      <Input 
+                        name="cpf"
+                        value={formData.cpf}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">Data de Nascimento</label>
+                      <Input 
+                        name="birthDate"
+                        value={formData.birthDate}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">Endereço</label>
+                      <Input 
+                        name="address"
+                        value={formData.address}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="form-label">Origem do Lead</label>
+                      <select 
+                        className="form-input"
+                        name="source"
+                        value={formData.source}
+                        onChange={handleInputChange}
+                      >
+                        <option value="">Selecione a origem</option>
+                        <option value="Facebook">Facebook</option>
+                        <option value="Instagram">Instagram</option>
+                        <option value="Google">Google</option>
+                        <option value="Indicação">Indicação</option>
+                        <option value="Site">Site</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label">Veículo de Interesse</label>
+                      <Input 
+                        name="vehicleOfInterest"
+                        value={formData.vehicleOfInterest}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label">Forma de Pagamento</label>
+                      <select 
+                        className="form-input"
+                        name="paymentMethod"
+                        value={formData.paymentMethod}
+                        onChange={handleInputChange}
+                      >
+                        <option value="cash">À Vista</option>
+                        <option value="trade">Troca</option>
+                        <option value="financing">Financiamento</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label">Status</label>
+                      <select 
+                        className="form-input"
+                        name="status"
+                        value={formData.status}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        {columns.map((column) => (
+                          <option key={column.id} value={column.id}>
+                            {column.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="form-label">Observações</label>
+                      <textarea 
+                        className="form-input h-24" 
+                        name="notes"
+                        value={formData.notes}
+                        onChange={handleInputChange}
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
+                
+                <DialogFooter className="mt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsEditingLead(false);
+                      resetForm();
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit" className="bg-crm-primary">
+                    Salvar Alterações
+                  </Button>
+                </DialogFooter>
+              </form>
+            </>
+          )}
         </DialogContent>
       </Dialog>
+      
+      {/* Add New Lead Dialog */}
+      <Dialog open={showAddLeadForm} onOpenChange={setShowAddLeadForm}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Nova Oportunidade</DialogTitle>
+            <DialogDescription>
+              Preencha os dados para adicionar um novo lead ao sistema.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAddLeadSubmit}>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Dados Cadastrais</h3>
+                <div className="form-input-wrapper">
+                  <label className="form-label">Nome</label>
+                  <Input
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="form-input-wrapper">
+                  <label className="form-label">WhatsApp</label>
+                  <Input
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="form-input-wrapper">
+                  <label className="form-label">E-mail</label>
+                  <Input
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="form-input-wrapper">
+                  <label className="form-label">CPF</label>
+                  <Input
+                    name="cpf"
+                    value={formData.cpf}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="form-input-wrapper">
+                  <label className="form-label">Data de Nascimento</label>
+                  <Input
+                    name="birthDate"
+                    value={formData.birthDate}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="form-input-wrapper">
+                  <label className="form-label">Endereço</label>
+                  <Input
+                    name="address"
+                    value={formData.address}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium">Dados Comerciais</h3>
+                <div className="form-input-wrapper">
+                  <label className="form-label">Origem do Lead</label>
+                  <select 
+                    className="form-input"
+                    name="source"
+                    value={formData.source}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">Selecione a origem</option>
+                    <option value="Facebook">Facebook</option>
+                    <option value="Instagram">Instagram</option>
+                    <option value="Google">Google</option>
+                    <option value="Indicação">Indicação</option>
+                    <option value="Site">Site</option>
+                  </select>
+                </div>
+                <div className="form-input-wrapper">
+                  <label className="form-label">Veículo de Interesse</label>
+                  <Input
+                    name="vehicleOfInterest"
+                    value={formData.vehicleOfInterest}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="form-input-wrapper">
+                  <label className="form-label">Forma de Pagamento</label>
+                  <select 
+                    className="form-input"
+                    name="paymentMethod"
+                    value={formData.paymentMethod}
+                    onChange={handleInputChange}
+                  >
+                    <option value="cash">À Vista</option>
+                    <option value="trade">Troca</option>
+                    <option value="financing">Financiamento</option>
+                  </select>
+                </div>
+                <div className="form-input-wrapper">
+                  <label className="form-label">Status</label>
+                  <select 
+                    className="form-input"
+                    name="status"
+                    value={formData.status}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="">Selecione o status</option>
+                    {columns.map((column) => (
+                      <option key={column.id} value={column.id}>
+                        {column.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-input-wrapper">
+                  <label className="form-label">Observações</label>
+                  <textarea 
+                    className="form-input h-24"
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleInputChange}
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="mt-4">
+              <Button type="button" variant="outline" onClick={resetForm}>Cancelar</Button>
+              <Button type="submit" className="bg-crm-primary">Adicionar Lead</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      
+      <Toaster />
     </Layout>
   );
 };

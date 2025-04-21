@@ -14,6 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { mockTags } from "../services/mockData";
 import { Tag } from "../types";
+import { Toaster } from "@/components/ui/toaster";
+import { showSuccessToast, showConfirmationToast } from "@/components/ui/toast-helper";
 
 const TagsPage: React.FC = () => {
   const [tags, setTags] = useState<Tag[]>(mockTags);
@@ -46,6 +48,7 @@ const TagsPage: React.FC = () => {
     
     setTags([...tags, newTag]);
     resetForm();
+    showSuccessToast("Tag adicionada com sucesso!");
   };
   
   const handleEditTag = () => {
@@ -57,10 +60,17 @@ const TagsPage: React.FC = () => {
     
     setEditingTag(null);
     resetForm();
+    showSuccessToast("Tag atualizada com sucesso!");
   };
   
   const handleDeleteTag = (id: string) => {
-    setTags(tags.filter(tag => tag.id !== id));
+    showConfirmationToast(
+      "Tem certeza que deseja excluir esta tag?", 
+      () => {
+        setTags(tags.filter(tag => tag.id !== id));
+        showSuccessToast("Tag excluída com sucesso!");
+      }
+    );
   };
   
   const handleDuplicateTag = (tag: Tag) => {
@@ -71,6 +81,7 @@ const TagsPage: React.FC = () => {
     };
     
     setTags([...tags, duplicateTag]);
+    showSuccessToast("Tag duplicada com sucesso!");
   };
   
   const startEditTag = (tag: Tag) => {
@@ -199,6 +210,7 @@ const TagsPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Toaster />
     </Layout>
   );
 };
