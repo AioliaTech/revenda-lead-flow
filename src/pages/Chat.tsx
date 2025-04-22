@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import Layout from "../components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -33,7 +32,6 @@ const ChatPage: React.FC = () => {
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Use our custom hook to manage chat messages
   const {
     messages,
     loading: messagesLoading,
@@ -43,7 +41,6 @@ const ChatPage: React.FC = () => {
   } = useWhatsappChat(selectedLead);
   
   useEffect(() => {
-    // Scroll to bottom when messages change
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
   
@@ -59,7 +56,6 @@ const ChatPage: React.FC = () => {
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !selectedLead || !isWhatsappConnected) return;
     
-    // Use our service to send the message
     await sendMessage(messageInput);
     setMessageInput("");
   };
@@ -67,7 +63,6 @@ const ChatPage: React.FC = () => {
   const handleConnectionStateChange = (isConnected: boolean) => {
     setIsWhatsappConnected(isConnected);
     
-    // Refresh messages when connection state changes
     if (isConnected && selectedLead) {
       refreshMessages();
     }
@@ -75,10 +70,9 @@ const ChatPage: React.FC = () => {
   
   return (
     <Layout title="Chat">
-      <div className="flex h-full overflow-hidden bg-white rounded-md shadow-sm">
-        {/* Left side - Contacts */}
-        <div className="w-1/4 border-r border-gray-200 flex flex-col">
-          <div className="p-3 border-b border-gray-200">
+      <div className="flex h-full overflow-hidden bg-white/50 backdrop-blur-sm rounded-lg shadow-sm">
+        <div className="w-1/4 border-r border-gray-100 flex flex-col animate-slide-in">
+          <div className="p-3 border-b border-gray-100 bg-crm-whatsapp/5">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
@@ -90,7 +84,7 @@ const ChatPage: React.FC = () => {
             </div>
           </div>
           
-          <div className="p-3 border-b border-gray-200">
+          <div className="p-3 border-b border-gray-100">
             <WhatsappConnection onConnectionStateChange={handleConnectionStateChange} />
           </div>
           
@@ -124,11 +118,9 @@ const ChatPage: React.FC = () => {
           </div>
         </div>
         
-        {/* Right side - Chat */}
         {selectedLead ? (
-          <div className="flex-1 flex flex-col">
-            {/* Chat header */}
-            <div className="p-3 border-b border-gray-200 flex justify-between items-center">
+          <div className="flex-1 flex flex-col animate-fade-in">
+            <div className="p-4 border-b border-gray-100 bg-crm-whatsapp/5 flex justify-between items-center">
               <div className="flex items-center">
                 <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center text-white font-medium mr-3">
                   {selectedLead.name.charAt(0)}
@@ -158,8 +150,7 @@ const ChatPage: React.FC = () => {
               </div>
             </div>
             
-            {/* Chat messages */}
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+            <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white">
               {messagesLoading ? (
                 <div className="flex justify-center items-center h-full">
                   <Loader2 className="h-8 w-8 animate-spin text-crm-primary" />
@@ -197,8 +188,7 @@ const ChatPage: React.FC = () => {
               )}
             </div>
             
-            {/* Chat input */}
-            <div className="p-3 border-t border-gray-200">
+            <div className="p-4 border-t border-gray-100 bg-white">
               <div className="flex items-center space-x-2">
                 <Button variant="ghost" size="sm" className="rounded-full h-9 w-9 p-0">
                   <Smile className="h-5 w-5 text-gray-500" />
@@ -247,7 +237,7 @@ const ChatPage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center bg-gray-50">
+          <div className="flex-1 flex items-center justify-center bg-gradient-to-b from-gray-50 to-white animate-fade-in">
             <div className="text-center">
               <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
                 <MessageSquare className="h-10 w-10 text-gray-400" />

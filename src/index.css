@@ -3,30 +3,45 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Other existing styles */
+/* ... keep existing code (other base styles) */
 
 @layer components {
+  /* ... keep existing code (existing component styles) */
+  
+  .kanban-column {
+    @apply bg-white/50 backdrop-blur-sm rounded-lg p-4 min-w-[300px] max-w-[300px] h-[calc(100vh-12rem)] flex flex-col shadow-sm border border-gray-100;
+  }
+  
+  .kanban-column-header {
+    @apply flex justify-between items-center mb-4 pb-2 border-b border-gray-100;
+  }
+  
+  .kanban-column-content {
+    @apply flex-1 overflow-y-auto space-y-2 pr-2;
+  }
+  
+  .kanban-card {
+    @apply bg-white rounded-lg shadow-sm p-4 mb-3 cursor-pointer transform transition-all duration-200 hover:shadow-md hover:-translate-y-1;
+  }
+  
   .tag {
-    @apply inline-flex px-2 py-0.5 text-xs font-medium rounded-full mr-1;
+    @apply inline-flex px-2 py-0.5 text-xs font-medium rounded-full;
   }
-  
-  .form-label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
-  }
-  
-  .form-input {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-crm-primary focus:border-transparent transition;
-  }
-  
-  .form-input-wrapper {
-    @apply mb-4;
-  }
-  
-  .chat-bubble-incoming {
-    @apply bg-white px-4 py-2 rounded-lg shadow-sm max-w-[80%] break-words;
-  }
-  
-  .chat-bubble-outgoing {
-    @apply bg-crm-primary text-white px-4 py-2 rounded-lg shadow-sm max-w-[80%] break-words;
-  }
+}
+
+/* Custom scrollbar for kanban columns */
+.kanban-column-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.kanban-column-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.kanban-column-content::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+
+.kanban-column-content::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
 }
