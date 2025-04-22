@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import Layout from "../components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -17,21 +18,21 @@ import {
   Loader2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { mockLeads } from "../services/mockData";
 import { Message as MessageType, Lead } from "../types";
 import { format } from "date-fns";
 import WhatsappConnection from "@/components/whatsapp/WhatsappConnection";
 import { useWhatsappChat } from "@/hooks/use-whatsapp-chat";
 import { Toaster } from "@/components/ui/toaster";
+import { useEvolutionContacts } from "@/hooks/use-evolution-contacts";
 
 const ChatPage: React.FC = () => {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [messageInput, setMessageInput] = useState("");
   const [isWhatsappConnected, setIsWhatsappConnected] = useState(false);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   const {
     messages,
     loading: messagesLoading,
@@ -39,35 +40,39 @@ const ChatPage: React.FC = () => {
     sendMessage,
     refreshMessages
   } = useWhatsappChat(selectedLead);
-  
+
+  // Usando contatos reais:
+  const { contacts, loading: contactsLoading, error: contactsError, refresh } = useEvolutionContacts();
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-  
-  const filteredLeads = mockLeads.filter(lead => 
+
+  // Filtra os contatos reais conforme a busca
+  const filteredLeads = contacts.filter(lead =>
     lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     lead.phone.includes(searchTerm)
   );
-  
+
   const formatTime = (timestamp: string) => {
     return format(new Date(timestamp), "HH:mm");
   };
-  
+
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !selectedLead || !isWhatsappConnected) return;
-    
+
     await sendMessage(messageInput);
     setMessageInput("");
   };
 
   const handleConnectionStateChange = (isConnected: boolean) => {
     setIsWhatsappConnected(isConnected);
-    
+
     if (isConnected && selectedLead) {
       refreshMessages();
     }
   };
-  
+
   return (
     <Layout title="Chat">
       <div className="flex h-full overflow-hidden bg-white/50 backdrop-blur-sm rounded-lg shadow-sm">
@@ -83,47 +88,61 @@ const ChatPage: React.FC = () => {
               />
             </div>
           </div>
-          
+
           <div className="p-3 border-b border-gray-100">
             <WhatsappConnection onConnectionStateChange={handleConnectionStateChange} />
           </div>
-          
+
           <div className="flex-1 overflow-y-auto">
-            {filteredLeads.map(lead => (
-              <div
-                key={lead.id}
-                className={`p-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer ${
-                  selectedLead?.id === lead.id ? "bg-gray-100" : ""
-                }`}
-                onClick={() => setSelectedLead(lead)}
-              >
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center text-white font-medium mr-3">
-                    {lead.name.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between">
-                      <h3 className="font-medium text-gray-900 truncate">{lead.name}</h3>
-                      <span className="text-xs text-gray-500">
-                        {format(new Date(lead.updatedAt), "HH:mm")}
-                      </span>
+            {contactsLoading ? (
+              <div className="flex justify-center items-center h-full text-gray-400 py-8">
+                <Loader2 className="h-6 w-6 animate-spin mr-2" /> Carregando contatos...
+              </div>
+            ) : contactsError ? (
+              <div className="flex justify-center items-center h-full text-red-500 py-8">
+                {contactsError}
+              </div>
+            ) : filteredLeads.length === 0 ? (
+              <div className="flex justify-center items-center h-full text-gray-400 py-8">
+                Nenhum contato encontrado
+              </div>
+            ) : (
+              filteredLeads.map(lead => (
+                <div
+                  key={lead.id}
+                  className={`p-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer ${
+                    selectedLead?.id === lead.id ? "bg-gray-100" : ""
+                  }`}
+                  onClick={() => setSelectedLead(lead)}
+                >
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center text-white font-medium mr-3">
+                      {lead.name?.charAt(0) ?? "?"}
                     </div>
-                    <p className="text-sm text-gray-500 truncate">
-                      {lead.vehicleOfInterest}
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between">
+                        <h3 className="font-medium text-gray-900 truncate">{lead.name}</h3>
+                        <span className="text-xs text-gray-500">
+                          {lead.updatedAt ? format(new Date(lead.updatedAt), "HH:mm") : ""}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-500 truncate">
+                        {lead.vehicleOfInterest}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
-        
+
         {selectedLead ? (
           <div className="flex-1 flex flex-col animate-fade-in">
             <div className="p-4 border-b border-gray-100 bg-crm-whatsapp/5 flex justify-between items-center">
               <div className="flex items-center">
                 <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center text-white font-medium mr-3">
-                  {selectedLead.name.charAt(0)}
+                  {selectedLead.name?.charAt(0) ?? "?"}
                 </div>
                 <div>
                   <h3 className="font-medium">{selectedLead.name}</h3>
@@ -133,7 +152,7 @@ const ChatPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-3">
                 <Button variant="ghost" size="sm" className="rounded-full h-9 w-9 p-0">
                   <Phone className="h-5 w-5" />
@@ -149,7 +168,7 @@ const ChatPage: React.FC = () => {
                 </Button>
               </div>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-gray-50 to-white">
               {messagesLoading ? (
                 <div className="flex justify-center items-center h-full">
@@ -187,7 +206,7 @@ const ChatPage: React.FC = () => {
                 </div>
               )}
             </div>
-            
+
             <div className="p-4 border-t border-gray-100 bg-white">
               <div className="flex items-center space-x-2">
                 <Button variant="ghost" size="sm" className="rounded-full h-9 w-9 p-0">
@@ -243,7 +262,7 @@ const ChatPage: React.FC = () => {
                 <MessageSquare className="h-10 w-10 text-gray-400" />
               </div>
               <h3 className="text-xl font-medium text-gray-800 mb-2">Selecione um contato</h3>
-              <p className="text-gray-500">Escolha um lead para iniciar a conversa</p>
+              <p className="text-gray-500">Escolha um contato do WhatsApp para iniciar a conversa</p>
             </div>
           </div>
         )}
@@ -254,3 +273,4 @@ const ChatPage: React.FC = () => {
 };
 
 export default ChatPage;
+

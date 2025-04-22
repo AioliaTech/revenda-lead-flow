@@ -1,4 +1,3 @@
-
 import { toast } from "@/hooks/use-toast";
 import { 
   EvolutionAPIInstance, 
@@ -245,6 +244,41 @@ class EvolutionAPIService {
     } catch (error) {
       console.error("Failed to set webhook:", error);
       return false;
+    }
+  }
+
+  // Obtenha contatos (leads) reais da Evolution API
+  async getContacts(): Promise<Lead[]> {
+    try {
+      // O endpoint pode variar conforme o Evolution API, exemplos comuns abaixo:
+      // Substitua pelo endpoint correto se necessário
+      const response = await this.request(`contacts/${this.instanceName}`);
+      // Esperando que o response.contacts seja um array. Ajuste conforme a resposta da sua API.
+      if (Array.isArray(response.contacts)) {
+        return response.contacts.map((c: any) => ({
+          id: c.id || c.phone || c._id || c.jid || c.number || c.name, // adapt to your api
+          name: c.name || c.pushname || c.phone,
+          phone: c.phone || c.id || c.number,
+          email: c.email || "",
+          address: c.address || "",
+          cpf: c.cpf || "",
+          birthDate: c.birthDate || "",
+          source: c.source || "",
+          vehicleOfInterest: c.vehicleOfInterest || "",
+          paymentMethod: "cash",
+          tradeInfo: c.tradeInfo,
+          financingInfo: c.financingInfo,
+          notes: c.notes || "",
+          status: c.status || "",
+          tags: [],
+          createdAt: c.createdAt || new Date().toISOString(),
+          updatedAt: c.updatedAt || new Date().toISOString(),
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error("Falha ao buscar contatos:", error);
+      return [];
     }
   }
 }
