@@ -1,4 +1,5 @@
-import { Lead, KanbanColumn, Tag } from "../types";
+
+import { Lead, KanbanColumn, Tag, Channel, User } from "../types";
 
 export const mockTags: Tag[] = [
   {
@@ -36,7 +37,7 @@ export const mockLeads: Lead[] = [
     vehicleOfInterest: "Toyota Corolla",
     paymentMethod: "financing",
     financingInfo: {
-      downPayment: 5000,
+      downPayment: "5000",
     },
     status: "new",
     notes: "Entrou em contato pelo Facebook, interessado em financiamento.",
@@ -74,9 +75,9 @@ export const mockLeads: Lead[] = [
     paymentMethod: "trade",
     tradeInfo: {
       model: "Volkswagen Gol",
-      year: 2015,
-      km: 80000,
-      downPayment: 3000,
+      year: "2015",
+      km: "80000",
+      downPayment: "3000",
     },
     status: "contacted",
     notes: "Encontrou no Google, quer usar o carro na troca.",
@@ -96,7 +97,7 @@ export const mockLeads: Lead[] = [
     vehicleOfInterest: "Hyundai HB20",
     paymentMethod: "financing",
     financingInfo: {
-      downPayment: 4000,
+      downPayment: "4000",
     },
     status: "negotiation",
     notes: "Foi indicada por um amigo, busca um carro para o dia a dia.",
@@ -147,6 +148,43 @@ export const mockKanbanColumns: KanbanColumn[] = [
     title: "Fechado",
     leadIds: ["5"],
     backgroundColor: "#ffffff"
+  }
+];
+
+// Add the missing mock data needed by Settings.tsx
+export const mockChannels: Channel[] = [
+  {
+    id: "channel-1",
+    name: "Canal Principal",
+    phoneNumber: "5511999998888",
+    isActive: true
+  },
+  {
+    id: "channel-2",
+    name: "Canal Secundário",
+    phoneNumber: "5511999997777",
+    isActive: false
+  }
+];
+
+export const mockUsers: User[] = [
+  {
+    id: "user-1",
+    name: "Admin User",
+    email: "admin@example.com",
+    role: "admin"
+  },
+  {
+    id: "user-2",
+    name: "Gerente",
+    email: "gerente@example.com",
+    role: "manager"
+  },
+  {
+    id: "user-3",
+    name: "Vendedor",
+    email: "vendedor@example.com",
+    role: "agent"
   }
 ];
 
