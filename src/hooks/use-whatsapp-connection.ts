@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { evolutionAPIService } from '@/services/evolution-api';
 import { EvolutionAPIInstance } from '@/types/evolution-api';
 import { showErrorToast, showSuccessToast } from '@/components/ui/toast-helper';
@@ -9,7 +9,7 @@ export function useWhatsappConnection() {
   const [loading, setLoading] = useState(true);
   const [qrCode, setQrCode] = useState<string | null>(null);
 
-  const checkConnection = async () => {
+  const checkConnection = useCallback(async () => {
     try {
       setLoading(true);
       const instanceData = await evolutionAPIService.getInstance();
@@ -30,14 +30,15 @@ export function useWhatsappConnection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const connect = async () => {
+  const connect = useCallback(async () => {
     try {
       setLoading(true);
       
       // First try to create instance if needed
       try {
+        console.log("Creating/checking WhatsApp instance...");
         const createdInstance = await evolutionAPIService.createInstance();
         console.log("Instance created/checked:", createdInstance);
         setInstance(createdInstance);
@@ -68,9 +69,9 @@ export function useWhatsappConnection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [checkConnection]);
 
-  const disconnect = async () => {
+  const disconnect = useCallback(async () => {
     try {
       setLoading(true);
       const result = await evolutionAPIService.disconnectInstance();
@@ -90,19 +91,19 @@ export function useWhatsappConnection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [checkConnection]);
 
   useEffect(() => {
     // Check connection on component mount
     checkConnection();
     
     // Setup periodic connection check
-    const interval = setInterval(checkConnection, 30000);
+    const interval = setInterval(checkConnection, 15000);
     
     return () => {
       clearInterval(interval);
     };
-  }, []);
+  }, [checkConnection]);
 
   return {
     instance,
