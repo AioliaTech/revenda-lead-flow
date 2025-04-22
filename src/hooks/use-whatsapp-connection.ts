@@ -36,10 +36,13 @@ export function useWhatsappConnection() {
     try {
       setLoading(true);
       
-      // Create instance if it doesn't exist
-      if (!instance) {
+      // First try to create instance if needed
+      try {
         const createdInstance = await evolutionAPIService.createInstance();
-        console.log("Instance created:", createdInstance);
+        console.log("Instance created/checked:", createdInstance);
+        setInstance(createdInstance);
+      } catch (err) {
+        console.log("Note: Instance might already exist:", err);
       }
       
       // Connect and get QR code
@@ -50,13 +53,15 @@ export function useWhatsappConnection() {
       if (qrcode) {
         setQrCode(qrcode);
         showSuccessToast("QR Code gerado com sucesso!");
-      } else if (instance?.status === 'connected') {
-        showSuccessToast("WhatsApp conectado com sucesso!");
       } else {
-        showErrorToast("Falha ao gerar QR Code");
+        // Check if we're already connected
+        const currentInstance = await checkConnection();
+        if (currentInstance?.status === 'connected') {
+          showSuccessToast("WhatsApp já está conectado!");
+        } else {
+          showErrorToast("Falha ao gerar QR Code. Verifique as configurações da Evolution API.");
+        }
       }
-      
-      await checkConnection();
     } catch (error) {
       console.error("Failed to connect:", error);
       showErrorToast("Falha ao conectar com o WhatsApp");

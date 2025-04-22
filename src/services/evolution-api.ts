@@ -193,7 +193,9 @@ class EvolutionAPIService {
     try {
       const phone = lead.phone.replace(/\D/g, '');
       
-      const response = await this.request(`chat/fetchMessages/${this.instanceName}?number=${phone}&limit=${limit}`);
+      // Updated endpoint to match Evolution API's structure
+      // Using v1/messages/conversation instead of chat/fetchMessages
+      const response = await this.request(`v1/messages/conversation/${this.instanceName}/${phone}?limit=${limit}`);
       
       if (Array.isArray(response.messages)) {
         // Convert Evolution API messages to our app's Message format
