@@ -1,4 +1,3 @@
-
 import { DateRange as DayPickerDateRange } from "react-day-picker";
 
 export type DateRange = DayPickerDateRange;
@@ -40,6 +39,7 @@ export interface KanbanColumn {
   id: string;
   title: string;
   leadIds: string[];
+  backgroundColor?: string;
 }
 
 export interface Message {

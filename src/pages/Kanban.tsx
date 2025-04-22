@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import Layout from "../components/layout/Layout";
 import { Button } from "@/components/ui/button";
@@ -17,8 +16,15 @@ import { KanbanColumn, Lead, Tag } from "../types";
 import { showSuccessToast, showConfirmationToast } from "@/components/ui/toast-helper";
 import { Toaster } from "@/components/ui/toaster";
 
+interface KanbanColumnWithColor extends KanbanColumn {
+  backgroundColor?: string;
+}
+
 const KanbanPage: React.FC = () => {
-  const [columns, setColumns] = useState<KanbanColumn[]>(mockKanbanColumns);
+  const [columns, setColumns] = useState<KanbanColumnWithColor[]>(mockKanbanColumns.map(col => ({
+    ...col,
+    backgroundColor: '#ffffff' // Default white background
+  })));
   const [editMode, setEditMode] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isEditingLead, setIsEditingLead] = useState(false);
@@ -26,14 +32,9 @@ const KanbanPage: React.FC = () => {
   const [draggedLead, setDraggedLead] = useState<string | null>(null);
   const [draggedColumn, setDraggedColumn] = useState<string | null>(null);
   
-  // New column being created
   const [newColumnTitle, setNewColumnTitle] = useState("");
-  
-  // Column being edited
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
   const [editingColumnTitle, setEditingColumnTitle] = useState("");
-  
-  // New lead being created
   const [showAddLeadForm, setShowAddLeadForm] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -44,10 +45,12 @@ const KanbanPage: React.FC = () => {
     address: "",
     source: "",
     vehicleOfInterest: "",
-    paymentMethod: "cash" as "cash" | "trade" | "financing", // Updated type
+    paymentMethod: "cash" as "cash" | "trade" | "financing",
     status: "",
     notes: "",
   });
+  
+  const [columnColor, setColumnColor] = useState("#ffffff");
   
   const handleDragStart = (leadId: string, columnId: string) => {
     setDraggedLead(leadId);
@@ -60,21 +63,17 @@ const KanbanPage: React.FC = () => {
   
   const handleDrop = (columnId: string) => {
     if (draggedLead && draggedColumn) {
-      // If dropped in the same column, do nothing
       if (draggedColumn === columnId) {
         setDraggedLead(null);
         setDraggedColumn(null);
         return;
       }
       
-      // Find the lead being moved
       const lead = mockLeads.find(l => l.id === draggedLead);
       
       if (lead) {
-        // Update lead's status
         lead.status = columnId;
         
-        // Remove from source column
         const updatedColumns = columns.map(col => {
           if (col.id === draggedColumn) {
             return {
@@ -85,7 +84,6 @@ const KanbanPage: React.FC = () => {
           return col;
         });
         
-        // Add to target column
         const finalColumns = updatedColumns.map(col => {
           if (col.id === columnId) {
             return {
@@ -123,7 +121,6 @@ const KanbanPage: React.FC = () => {
     showConfirmationToast(
       "Tem certeza que deseja excluir esta coluna?",
       () => {
-        // Check if column has leads
         const column = columns.find(col => col.id === columnId);
         if (column && column.leadIds.length > 0) {
           showSuccessToast("Remova todos os leads desta coluna antes de excluí-la.");
@@ -146,13 +143,18 @@ const KanbanPage: React.FC = () => {
     
     setColumns(columns.map(col => {
       if (col.id === columnId) {
-        return { ...col, title: editingColumnTitle };
+        return { 
+          ...col, 
+          title: editingColumnTitle,
+          backgroundColor: columnColor 
+        };
       }
       return col;
     }));
     
     setEditingColumnId(null);
     setEditingColumnTitle("");
+    setColumnColor("#ffffff");
     showSuccessToast("Coluna atualizada com sucesso!");
   };
   
@@ -197,7 +199,6 @@ const KanbanPage: React.FC = () => {
   };
   
   const handleOpenLeadChat = () => {
-    // In a real app, this would navigate to the chat with this lead
     showSuccessToast("Abrindo chat com o lead...");
     setSelectedLead(null);
   };
@@ -214,7 +215,6 @@ const KanbanPage: React.FC = () => {
     e.preventDefault();
     
     if (isEditingLead && selectedLead) {
-      // Update existing lead
       const updatedLead = {
         ...selectedLead,
         name: formData.name,
@@ -231,13 +231,11 @@ const KanbanPage: React.FC = () => {
         updatedAt: new Date().toISOString()
       };
       
-      // In a real app, we would update the lead in the database
       showSuccessToast("Lead atualizado com sucesso!");
       
       setSelectedLead(null);
       setIsEditingLead(false);
     } else {
-      // Create new lead
       const newLead: Lead = {
         id: `lead-${Date.now()}`,
         name: formData.name,
@@ -256,7 +254,6 @@ const KanbanPage: React.FC = () => {
         updatedAt: new Date().toISOString()
       };
       
-      // Add lead to selected column
       const updatedColumns = columns.map(col => {
         if (col.id === newLead.status) {
           return {
@@ -269,7 +266,6 @@ const KanbanPage: React.FC = () => {
       
       setColumns(updatedColumns);
       
-      // In a real app, we would add the lead to the database
       mockLeads.push(newLead);
       
       showSuccessToast("Lead adicionado com sucesso!");
@@ -288,7 +284,7 @@ const KanbanPage: React.FC = () => {
       address: "",
       source: "",
       vehicleOfInterest: "",
-      paymentMethod: "cash" as "cash" | "trade" | "financing", // Updated type
+      paymentMethod: "cash" as "cash" | "trade" | "financing",
       status: "",
       notes: "",
     });
@@ -298,7 +294,6 @@ const KanbanPage: React.FC = () => {
   
   const toggleEditMode = () => {
     if (editMode) {
-      // Save changes when exiting edit mode
       showSuccessToast("Alterações salvas com sucesso!");
     }
     setEditMode(!editMode);
@@ -335,6 +330,7 @@ const KanbanPage: React.FC = () => {
             <div 
               key={column.id} 
               className="kanban-column"
+              style={{ backgroundColor: column.backgroundColor }}
               onDragOver={handleDragOver}
               onDrop={() => handleDrop(column.id)}
             >
@@ -345,6 +341,12 @@ const KanbanPage: React.FC = () => {
                       value={editingColumnTitle} 
                       onChange={(e) => setEditingColumnTitle(e.target.value)}
                       className="w-full h-8"
+                    />
+                    <input
+                      type="color"
+                      value={columnColor}
+                      onChange={(e) => setColumnColor(e.target.value)}
+                      className="h-8 w-8 rounded cursor-pointer"
                     />
                     <Button 
                       size="sm" 
@@ -408,7 +410,6 @@ const KanbanPage: React.FC = () => {
                       className="h-7 w-7 p-0 rounded-full"
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Open chat with this lead
                         showSuccessToast("Abrindo chat com o lead...");
                       }}
                     >
@@ -442,9 +443,8 @@ const KanbanPage: React.FC = () => {
         })}
       </div>
       
-      {/* Lead Details Dialog */}
       <Dialog open={!!selectedLead} onOpenChange={(open) => !open && setSelectedLead(null)}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl bg-white">
           {selectedLead && !isEditingLead && (
             <>
               <DialogHeader>
@@ -509,7 +509,6 @@ const KanbanPage: React.FC = () => {
             </>
           )}
 
-          {/* Lead Edit Form */}
           {isEditingLead && (
             <>
               <DialogHeader>
@@ -662,9 +661,8 @@ const KanbanPage: React.FC = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Add New Lead Dialog */}
       <Dialog open={showAddLeadForm} onOpenChange={setShowAddLeadForm}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl bg-white">
           <DialogHeader>
             <DialogTitle>Nova Oportunidade</DialogTitle>
             <DialogDescription>
