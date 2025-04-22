@@ -51,9 +51,9 @@ export async function getMessages(lead: Lead, limit: number = 50): Promise<Messa
     const { instanceName } = await import("./config").then(m => m.getEvolutionConfig());
     const phone = lead.phone.replace(/\D/g, '');
     
-    // Try different endpoints used by various Evolution API versions
-    // In order of likelihood to work with most Evolution API versions
+    // Updated endpoints list with the new endpoint first - prioritizing it
     const endpoints = [
+      `chat/findChats/${instanceName}?number=${phone}&limit=${limit}`,
       `instance/fetchMessages/${instanceName}?number=${phone}&limit=${limit}`,
       `message/fetch/${instanceName}/${phone}?limit=${limit}`,
       `fetch/messages/${instanceName}/${phone}?limit=${limit}`,
@@ -66,9 +66,11 @@ export async function getMessages(lead: Lead, limit: number = 50): Promise<Messa
     // Try each endpoint until one works
     for (const endpoint of endpoints) {
       try {
+        console.log(`Trying to fetch messages using endpoint: ${endpoint}`);
         response = await makeRequest(endpoint);
         console.log("Messages response from endpoint:", endpoint, response);
-        if (response && (response.messages || response.data)) {
+        if (response && (response.messages || response.data || response.conversation || response.chats)) {
+          console.log("Found valid messages response format");
           break; // We got a valid response, exit the loop
         }
       } catch (err) {
@@ -77,25 +79,55 @@ export async function getMessages(lead: Lead, limit: number = 50): Promise<Messa
       }
     }
     
-    if (!response || (!response.messages && !response.data)) {
+    if (!response) {
       console.error("All message endpoints failed:", error);
       return [];
     }
     
     // Handle different response formats
-    const messageArray = response.messages || response.data || [];
+    const messageArray = response.messages || response.data || response.conversation || response.chats || [];
+    console.log("Extracted messages array:", messageArray);
+    
+    if (messageArray.length === 0) {
+      console.log("No messages found in the response");
+      return [];
+    }
     
     // Convert Evolution API messages to our app's Message format
-    return messageArray.map((msg: any) => ({
-      id: msg.id || msg.key?.id || `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-      leadId: lead.id,
-      content: msg.body || msg.message?.conversation || msg.message?.extendedTextMessage?.text || "",
-      type: msg.type === 'chat' ? 'text' : (msg.type || 'text'),
-      fileUrl: msg.mediaUrl,
-      isIncoming: !msg.fromMe,
-      timestamp: new Date(msg.timestamp * 1000 || Date.now()).toISOString(),
-      status: msg.status || "delivered"
-    }));
+    const formattedMessages = messageArray.map((msg: any) => {
+      console.log("Processing message:", msg);
+      
+      // Extract message content from various possible structures
+      const content = msg.body || 
+                     msg.message?.conversation || 
+                     msg.message?.extendedTextMessage?.text || 
+                     msg.content ||
+                     "";
+      
+      // Extract message type
+      const type = msg.type === 'chat' ? 'text' : (msg.type || 'text');
+      
+      // Extract if message is incoming
+      const isIncoming = typeof msg.fromMe === 'boolean' ? !msg.fromMe : (msg.direction === 'incoming');
+      
+      // Extract timestamp
+      const timestamp = msg.timestamp ? new Date(msg.timestamp * 1000).toISOString() : new Date().toISOString();
+      
+      // Create message object
+      return {
+        id: msg.id || msg.key?.id || `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        leadId: lead.id,
+        content: content,
+        type: type,
+        fileUrl: msg.mediaUrl,
+        isIncoming: isIncoming,
+        timestamp: timestamp,
+        status: msg.status || "delivered"
+      };
+    });
+    
+    console.log("Formatted messages:", formattedMessages);
+    return formattedMessages;
     
   } catch (error) {
     console.error("Failed to fetch messages:", error);

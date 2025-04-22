@@ -8,6 +8,7 @@ export async function getContacts(): Promise<Lead[]> {
     
     // Try multiple endpoints that might work with different Evolution API versions
     const endpoints = [
+      `chat/getAllChats/${instanceName}`,
       `instance/contacts/${instanceName}`,
       `contacts/${instanceName}`,
       `contact/getContacts/${instanceName}`
@@ -19,9 +20,11 @@ export async function getContacts(): Promise<Lead[]> {
     // Try each endpoint until one works
     for (const endpoint of endpoints) {
       try {
+        console.log(`Trying to fetch contacts using endpoint: ${endpoint}`);
         response = await makeRequest(endpoint);
         console.log("Contacts response from endpoint:", endpoint, response);
-        if (response && (response.contacts || response.data)) {
+        if (response && (response.contacts || response.data || response.chats)) {
+          console.log("Found valid contacts response format");
           break; // We got a valid response, exit the loop
         }
       } catch (err) {
@@ -36,12 +39,14 @@ export async function getContacts(): Promise<Lead[]> {
     }
     
     // Handle different response formats
-    const contactArray = response.contacts || response.data || [];
+    const contactArray = response.contacts || response.data || response.chats || [];
     
     if (!Array.isArray(contactArray)) {
       console.error("Unexpected response format for contacts:", response);
       return [];
     }
+    
+    console.log("Processing contacts array:", contactArray);
     
     return contactArray.map((c: any) => {
       // Extract phone number from various formats

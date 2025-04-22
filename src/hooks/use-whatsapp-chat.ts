@@ -11,7 +11,10 @@ export function useWhatsappChat(selectedLead: Lead | null) {
   
   // Fetch messages for the selected lead
   const fetchMessages = useCallback(async () => {
-    if (!selectedLead) return;
+    if (!selectedLead) {
+      console.log("No lead selected, skipping message fetch");
+      return;
+    }
     
     try {
       setLoading(true);
@@ -26,12 +29,13 @@ export function useWhatsappChat(selectedLead: Lead | null) {
         const sortedMessages = [...fetchedMessages].sort((a, b) => 
           new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
         );
+        console.log("Sorted messages:", sortedMessages);
         setMessages(sortedMessages);
       } else {
         console.log("No messages found");
         setMessages([]);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching messages:", err);
       setError("Falha ao carregar mensagens");
       showErrorToast("Não foi possível carregar as mensagens");
@@ -69,12 +73,14 @@ export function useWhatsappChat(selectedLead: Lead | null) {
       return;
     }
     
+    console.log("Setting up message polling for lead:", selectedLead.phone);
     fetchMessages();
     
     // Poll for new messages every 5 seconds
     const interval = setInterval(fetchMessages, 5000);
     
     return () => {
+      console.log("Cleaning up message polling");
       clearInterval(interval);
     };
   }, [selectedLead, fetchMessages]);
