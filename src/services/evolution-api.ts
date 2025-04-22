@@ -31,6 +31,7 @@ class EvolutionAPIService {
     };
 
     try {
+      console.log(`Making request to: ${url}`);
       const response = await fetch(url, {
         ...options,
         headers
@@ -42,7 +43,9 @@ class EvolutionAPIService {
         throw new Error(`API error: ${response.status} - ${errorText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log(`Response from ${endpoint}:`, data);
+      return data;
     } catch (error) {
       console.error("Evolution API request failed:", error);
       showErrorToast("Falha na comunicação com a API do WhatsApp");
@@ -58,15 +61,14 @@ class EvolutionAPIService {
       
       // Check if there's a QR code available
       let qrcode = undefined;
-      if (result.state === 'connecting' || result.state === 'qrcode') {
-        qrcode = result.qrcode;
-      }
+      
+      // The state 'open' typically means the instance is connected
+      const connectedState = result.instance?.state === 'open';
       
       return {
         instanceName: this.instanceName,
         token: this.token,
-        status: result.state === 'open' ? 'connected' : 
-                (result.state === 'connecting' || result.state === 'qrcode') ? 'connecting' : 'disconnected',
+        status: connectedState ? 'connected' : 'disconnected',
         qrcode: qrcode
       };
     } catch (error) {
@@ -107,22 +109,23 @@ class EvolutionAPIService {
       // First check if instance exists
       const instanceCheck = await this.getInstance();
       
-      // If not connected, initiate connection
+      // For Evolution API, we need to use the correct endpoint to generate a QR code
+      // Based on the API logs, let's try a different endpoint
       if (instanceCheck.status !== 'connected') {
-        const response = await this.request(`instance/connect/${this.instanceName}`, {
-          method: 'POST'
-        });
-        
-        console.log("Connect instance response:", response);
-        
-        // Wait a moment and check for QR code
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const updatedInstance = await this.getInstance();
-        console.log("Updated instance after connect:", updatedInstance);
-        
-        if (updatedInstance.qrcode) {
-          return updatedInstance.qrcode;
+        try {
+          // Try the qrcode endpoint directly if connect doesn't work
+          const response = await this.request(`instance/qrcode/${this.instanceName}`, {
+            method: 'GET'
+          });
+          
+          console.log("QR code response:", response);
+          
+          // Return the QR code if available
+          if (response && response.qrcode) {
+            return response.qrcode;
+          }
+        } catch (qrError) {
+          console.error("Failed to get QR code:", qrError);
         }
       }
       
@@ -136,6 +139,7 @@ class EvolutionAPIService {
 
   async disconnectInstance(): Promise<boolean> {
     try {
+      // Try the logout endpoint for Evolution API
       await this.request(`instance/logout/${this.instanceName}`, {
         method: 'POST'
       });
@@ -193,9 +197,17 @@ class EvolutionAPIService {
     try {
       const phone = lead.phone.replace(/\D/g, '');
       
-      // Updated endpoint to match Evolution API's structure
-      // Using v1/messages/conversation instead of chat/fetchMessages
-      const response = await this.request(`v1/messages/conversation/${this.instanceName}/${phone}?limit=${limit}`);
+      // Try one of these endpoints based on Evolution API version
+      // Some versions use v1/messages/conversation, others might use chat/history
+      let response;
+      try {
+        response = await this.request(`v1/messages/conversation/${this.instanceName}/${phone}?limit=${limit}`);
+      } catch (err) {
+        console.log("First endpoint failed, trying fallback...");
+        response = await this.request(`chat/history/${this.instanceName}?number=${phone}&limit=${limit}`);
+      }
+      
+      console.log("Messages response:", response);
       
       if (Array.isArray(response.messages)) {
         // Convert Evolution API messages to our app's Message format

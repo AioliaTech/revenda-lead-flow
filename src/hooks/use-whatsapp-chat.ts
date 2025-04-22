@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { evolutionAPIService } from '@/services/evolution-api';
 import { Lead, Message } from '@/types';
+import { showErrorToast } from '@/components/ui/toast-helper';
 
 export function useWhatsappChat(selectedLead: Lead | null) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -16,7 +17,9 @@ export function useWhatsappChat(selectedLead: Lead | null) {
       setLoading(true);
       setError(null);
       
+      console.log("Fetching messages for:", selectedLead.phone);
       const fetchedMessages = await evolutionAPIService.getMessages(selectedLead);
+      console.log("Fetched messages:", fetchedMessages);
       setMessages(fetchedMessages);
     } catch (err) {
       console.error("Error fetching messages:", err);
